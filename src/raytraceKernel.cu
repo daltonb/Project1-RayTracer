@@ -109,7 +109,7 @@ __global__ void raytraceRay(glm::vec2 resolution, float time, cameraData cam, in
    }
 }
 
-//TODO: FINISH THIS FUNCTION
+// DALTON: COMPLETE
 // Wrapper for the __global__ call that sets up the kernel calls and does a ton of memory management
 void cudaRaytraceCore(uchar4* PBOpos, camera* renderCam, int frame, int iterations, material* materials, int numberOfMaterials, geom* geoms, int numberOfGeoms){
   
@@ -125,7 +125,7 @@ void cudaRaytraceCore(uchar4* PBOpos, camera* renderCam, int frame, int iteratio
   cudaMalloc((void**)&cudaimage, (int)renderCam->resolution.x*(int)renderCam->resolution.y*sizeof(glm::vec3));
   cudaMemcpy( cudaimage, renderCam->image, (int)renderCam->resolution.x*(int)renderCam->resolution.y*sizeof(glm::vec3), cudaMemcpyHostToDevice);
   
-  //package geometry and materials and sent to GPU
+  //package geometry and send to GPU
   staticGeom* geomList = new staticGeom[numberOfGeoms];
   for(int i=0; i<numberOfGeoms; i++){
     staticGeom newStaticGeom;
@@ -138,10 +138,32 @@ void cudaRaytraceCore(uchar4* PBOpos, camera* renderCam, int frame, int iteratio
     newStaticGeom.inverseTransform = geoms[i].inverseTransforms[frame];
     geomList[i] = newStaticGeom;
   }
-  
+
   staticGeom* cudageoms = NULL;
   cudaMalloc((void**)&cudageoms, numberOfGeoms*sizeof(staticGeom));
-  cudaMemcpy( cudageoms, geomList, numberOfGeoms*sizeof(staticGeom), cudaMemcpyHostToDevice);
+  cudaMemcpy(cudageoms, geomList, numberOfGeoms*sizeof(staticGeom), cudaMemcpyHostToDevice);
+
+  //DALTON
+  //package materials and send to GPU
+  material* materialList = new material[numberOfMaterials];
+  for(int i=0; i<numberOfMaterials; i++) {
+	material newMaterial;
+	newMaterial.color = materials[i].color;
+	newMaterial.specularExponent = materials[i].specularExponent;
+	newMaterial.specularColor = materials[i].specularColor;
+	newMaterial.hasReflective = materials[i].hasReflective;
+	newMaterial.hasRefractive = materials[i].hasRefractive;
+	newMaterial.indexOfRefraction = materials[i].indexOfRefraction;
+	newMaterial.hasScatter = materials[i].hasScatter;
+	newMaterial.absorptionCoefficient = materials[i].absorptionCoefficient;
+	newMaterial.reducedScatterCoefficient = materials[i].reducedScatterCoefficient;
+	newMaterial.emittance = materials[i].emittance;
+	materialList[i] = newMaterial;
+  };
+
+  material* cudamaterials = NULL;
+  cudaMalloc((void**)&cudamaterials, numberOfMaterials*sizeof(material));
+  cudaMemcpy(cudamaterials, materialList, numberOfMaterials*sizeof(material), cudaMemcpyHostToDevice);
   
   //package camera
   cameraData cam;
@@ -162,7 +184,9 @@ void cudaRaytraceCore(uchar4* PBOpos, camera* renderCam, int frame, int iteratio
   //free up stuff, or else we'll leak memory like a madman
   cudaFree( cudaimage );
   cudaFree( cudageoms );
+  cudaFree( cudamaterials ); //Dalton
   delete geomList;
+  delete materialList; //Dalton
 
   // make certain the kernel has completed
   cudaThreadSynchronize();
