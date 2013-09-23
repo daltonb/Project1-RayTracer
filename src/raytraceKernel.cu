@@ -41,12 +41,19 @@ __host__ __device__ glm::vec3 generateRandomNumberFromThread(glm::vec2 resolutio
   return glm::vec3((float) u01(rng), (float) u01(rng), (float) u01(rng));
 }
 
-//TODO: IMPLEMENT THIS FUNCTION
+//DALTON: DONE
 //Function that does the initial raycast from the camera
 __host__ __device__ ray raycastFromCameraKernel(glm::vec2 resolution, float time, int x, int y, glm::vec3 eye, glm::vec3 view, glm::vec3 up, glm::vec2 fov){
   ray r;
-  r.origin = glm::vec3(0,0,0);
-  r.direction = glm::vec3(0,0,-1);
+  r.origin = eye;
+  float x_frac = (x - resolution.x/2 + 0.5)/resolution.x; // X offset from center in pixels as fraction of image half-width
+  float y_frac = (resolution.y/2 - y - 0.5)/resolution.y; // Y offset from center in pixels as fraction of image half-width
+  float x_fov = glm::tan(fov.x*PI/180); // projection of FOV.X onto image plane, 1 unit from eye
+  float y_fov = glm::tan(fov.y*PI/180); // projection of FOV.Y onto image plane, 1 unit from eye
+  glm::vec3 x_component = x_frac * x_fov * glm::normalize(glm::cross(up, view)); // raycast X component (i.e. pointing to the right)
+  glm::vec3 y_component = y_frac * y_fov * glm::normalize(up); // raycast Y component (i.e. pointing up)
+  glm::vec3 z_component = glm::normalize(view); // raycast Z component (i.e. pointing into scene)
+  r.direction = glm::normalize(x_component + y_component + z_component);
   return r;
 }
 
@@ -109,7 +116,7 @@ __global__ void raytraceRay(glm::vec2 resolution, float time, cameraData cam, in
    }
 }
 
-// DALTON: COMPLETE
+// DALTON: DONE
 // Wrapper for the __global__ call that sets up the kernel calls and does a ton of memory management
 void cudaRaytraceCore(uchar4* PBOpos, camera* renderCam, int frame, int iterations, material* materials, int numberOfMaterials, geom* geoms, int numberOfGeoms){
   
