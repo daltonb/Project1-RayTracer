@@ -111,9 +111,37 @@ __global__ void raytraceRay(glm::vec2 resolution, float time, cameraData cam, in
   int index = x + (y * resolution.x);
 
   if((x<=resolution.x && y<=resolution.y)){
-
-    colors[index] = generateRandomNumberFromThread(resolution, time, x, y);
-   }
+    ray camera_ray = raycastFromCameraKernel(resolution, time, x, y, cam.position, cam.view, cam.up, cam.fov);
+	  int i;
+	  float intersect = -1;
+    float tmp = -1;
+	  glm::vec3 intersectionPoint = glm::vec3(0, 0, 0);
+	  glm::vec3 normal = glm::vec3(0, 0, 0);
+    glm::vec3 &intersectionPointRef = intersectionPoint;
+    glm::vec3 &normalRef = normal;
+	  for (i=0; i<numberOfGeoms; i++) {
+	    staticGeom geom = geoms[i];
+	    if (geom.type == SPHERE) {
+	      tmp = sphereIntersectionTest(geom, camera_ray, intersectionPointRef, normalRef);
+	    } else if (geom.type == CUBE) {
+	      tmp = boxIntersectionTest(geom, camera_ray, intersectionPointRef, normalRef);
+      }
+      if (tmp > 0) { // we have an intersection
+        if (intersect > 0) { // intersection already detected
+          if (tmp < intersect) intersect = tmp; // this one is closer
+        } else { // no intersection detected yet
+          intersect = tmp;
+        }
+      }
+	  }
+    //colors[index] = generateRandomNumberFromThread(resolution, time, x, y);
+    if (intersect > 0) {
+      float scale = 0.1;
+      colors[index] = glm::vec3(1/(scale*intersect), 1/(scale*intersect), 1/(scale*intersect));
+    } else {
+      colors[index] = glm::vec3(0.0f, 0.0f, 0.0f);
+    }
+  }
 }
 
 // DALTON: DONE

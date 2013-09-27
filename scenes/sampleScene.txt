@@ -108,11 +108,11 @@ EMITTANCE   15
 
 CAMERA
 RES         800 800
-FOVY        25
+FOVY        30
 ITERATIONS  5000
 FILE        test.bmp
 frame 0
-EYE         0 4.5 12
+EYE         0 5 20
 VIEW        0 0 -1
 UP          0 1 0
 
@@ -170,7 +170,7 @@ material 3
 frame 0
 TRANS       2 5 2
 ROTAT       0 180 0
-SCALE       2.5 2.5 2.5
+SCALE       1.8 5 1.8
 
 OBJECT 7
 sphere
@@ -182,6 +182,15 @@ SCALE       3 3 3
 
 
 OBJECT 8
+sphere
+material 6
+frame 0
+TRANS       0 4.5 10
+ROTAT       0 0 0
+SCALE       .1 .1 .1
+
+
+OBJECT 9
 cube
 material 8 
 frame 0

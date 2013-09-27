@@ -17,7 +17,7 @@ __host__ __device__ glm::vec3 getPointOnRay(ray r, float t);
 __host__ __device__ glm::vec3 multiplyMV(cudaMat4 m, glm::vec4 v);
 __host__ __device__ glm::vec3 getSignOfRay(ray r);
 __host__ __device__ glm::vec3 getInverseDirectionOfRay(ray r);
-__host__ __device__ float boxIntersectionTest(staticGeom sphere, ray r, glm::vec3& intersectionPoint, glm::vec3& normal);
+__host__ __device__ float boxIntersectionTest(staticGeom box, ray r, glm::vec3& intersectionPoint, glm::vec3& normal);
 __host__ __device__ float sphereIntersectionTest(staticGeom sphere, ray r, glm::vec3& intersectionPoint, glm::vec3& normal);
 __host__ __device__ glm::vec3 getRandomPointOnCube(staticGeom cube, float randomSeed);
 
@@ -68,11 +68,84 @@ __host__ __device__ glm::vec3 getSignOfRay(ray r){
   return glm::vec3((int)(inv_direction.x < 0), (int)(inv_direction.y < 0), (int)(inv_direction.z < 0));
 }
 
-//TODO: IMPLEMENT THIS FUNCTION
+//DALTON: IN PROGRESS
 //Cube intersection test, return -1 if no intersection, otherwise, distance to intersection
 __host__ __device__ float boxIntersectionTest(staticGeom box, ray r, glm::vec3& intersectionPoint, glm::vec3& normal){
+  // standard cube is axis-aligned, origin-centered, unit side length
+  float radius = .5;
 
-    return -1;
+  // shift camera to "object space" instead of shifting object to "world space"
+  glm::vec3 ro = multiplyMV(box.inverseTransform, glm::vec4(r.origin, 1.0f));
+  glm::vec3 rd = glm::normalize(multiplyMV(box.inverseTransform, glm::vec4(r.direction, 0.0f)));
+
+  // initialize vars
+  ray rt; rt.origin = ro; rt.direction = rd; // transformed ray
+  float t; // parametric position on rt
+  glm::vec3 p; // intersection point
+  glm::vec3 norm; // intersection normal
+  bool intersectFlag = false;
+
+  // for the plane x =  0.5, t = ( 0.5 - ro.x)/(rd.x)
+  // for the plane x = -0.5, t = (-0.5 - ro.x)/(rd.x)
+  // therefore, when rd.x > 0, x = -0.5 will be closer, and vice-versa
+  // NOTE: this does not account for being inside or past the box
+
+  if (!epsilonCheck(rt.direction.x, 0.0f)) { // avoid divide by 0 error
+	// get appropriate YZ plane intersection
+    if (rt.direction.x < EPSILON) {
+      t = ( radius - rt.origin.x)/rt.direction.x;
+	  norm = glm::vec3(1, 0, 0);
+    } else {
+      t = (-radius - rt.origin.x)/rt.direction.x;
+	  norm = glm::vec3(-1, 0, 0);
+    }
+    p = getPointOnRay(rt, t);
+	// check for YZ face intersection
+    if (p.y >= -radius && p.y <= radius && p.z >= -radius && p.z <= radius) {
+      intersectFlag = true;
+    }
+  }
+  if (!intersectFlag && !epsilonCheck(rt.direction.y, 0.0f)) {
+	// get appropriate XZ plane intersection
+    if (rt.direction.y > EPSILON) {
+      t = ( radius - rt.origin.y)/rt.direction.y;
+	  norm = glm::vec3(0, 1, 0);
+    } else {
+      t = (-radius - rt.origin.y)/rt.direction.y;
+	  norm = glm::vec3(0, -1, 0);
+    }
+    p = getPointOnRay(rt, t);
+	// check for XZ face intersection
+    if (p.x >= -radius && p.x <= radius && p.z >= -radius && p.z <= radius) {
+      intersectFlag = true;
+    }
+  }
+  if (!intersectFlag && !epsilonCheck(rt.direction.z, 0.0f)) {
+	// get appropriate XY plane intersection
+    if (rt.direction.z > EPSILON) {
+      t = ( radius - rt.origin.z)/rt.direction.z;
+	  norm = glm::vec3(0, 0, 1);
+    } else {
+      t = (-radius - rt.origin.z)/rt.direction.z;
+	  norm = glm::vec3(0, 0, -1);
+    }
+    p = getPointOnRay(rt, t);
+	// check for XY face intersection
+    if (p.x >= -radius && p.x <= radius && p.y >= -radius && p.y <= radius) {
+      intersectFlag = true;
+    }
+  }
+
+  if (!intersectFlag) return -1;
+
+  // shift intersection back to "world space"
+  glm::vec3 realIntersectionPoint = multiplyMV(box.transform, glm::vec4(p, 1.0f));
+  glm::vec3 realOrigin = multiplyMV(box.transform, glm::vec4(0,0,0,1));
+
+  intersectionPoint = realIntersectionPoint;
+  normal = glm::normalize(multiplyMV(box.inverseTransform, glm::vec4(norm, 0.0f)));
+        
+  return glm::length(r.origin - realIntersectionPoint);
 }
 
 //LOOK: Here's an intersection test example from a sphere. Now you just need to figure out cube and, optionally, triangle.
@@ -80,7 +153,7 @@ __host__ __device__ float boxIntersectionTest(staticGeom box, ray r, glm::vec3& 
 __host__ __device__ float sphereIntersectionTest(staticGeom sphere, ray r, glm::vec3& intersectionPoint, glm::vec3& normal){
   
   float radius = .5;
-        
+
   glm::vec3 ro = multiplyMV(sphere.inverseTransform, glm::vec4(r.origin,1.0f));
   glm::vec3 rd = glm::normalize(multiplyMV(sphere.inverseTransform, glm::vec4(r.direction,0.0f)));
 
