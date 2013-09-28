@@ -81,69 +81,82 @@ __host__ __device__ float boxIntersectionTest(staticGeom box, ray r, glm::vec3& 
   // initialize vars
   ray rt; rt.origin = ro; rt.direction = rd; // transformed ray
   float t; // parametric position on rt
+
   glm::vec3 p; // intersection point
   glm::vec3 norm; // intersection normal
   bool intersectFlag = false;
+
+  float min_t; // closest intersection
+  glm::vec3 min_norm; // norm of closest intersection
 
   // for the plane x =  0.5, t = ( 0.5 - ro.x)/(rd.x)
   // for the plane x = -0.5, t = (-0.5 - ro.x)/(rd.x)
   // therefore, when rd.x > 0, x = -0.5 will be closer, and vice-versa
   // NOTE: this does not account for being inside or past the box
-
   if (!epsilonCheck(rt.direction.x, 0.0f)) { // avoid divide by 0 error
 	// get appropriate YZ plane intersection
-    if (rt.direction.x < EPSILON) {
+    if (rt.direction.x < 0) {
       t = ( radius - rt.origin.x)/rt.direction.x;
-	  norm = glm::vec3(1, 0, 0);
+	    norm = glm::vec3(1, 0, 0);
     } else {
       t = (-radius - rt.origin.x)/rt.direction.x;
-	  norm = glm::vec3(-1, 0, 0);
+	    norm = glm::vec3(-1, 0, 0);
     }
     p = getPointOnRay(rt, t);
 	// check for YZ face intersection
-    if (p.y >= -radius && p.y <= radius && p.z >= -radius && p.z <= radius) {
-      intersectFlag = true;
+    if ((p.y >= -radius) && (p.y <= radius) && (p.z >= -radius) && (p.z <= radius)) {
+      min_t = t;
+	    min_norm = norm;
+	    intersectFlag = true;
     }
   }
   if (!intersectFlag && !epsilonCheck(rt.direction.y, 0.0f)) {
 	// get appropriate XZ plane intersection
-    if (rt.direction.y > EPSILON) {
+    if (rt.direction.y < 0) {
       t = ( radius - rt.origin.y)/rt.direction.y;
-	  norm = glm::vec3(0, 1, 0);
+	    norm = glm::vec3(0, 1, 0);
     } else {
       t = (-radius - rt.origin.y)/rt.direction.y;
-	  norm = glm::vec3(0, -1, 0);
+	    norm = glm::vec3(0, -1, 0);
     }
     p = getPointOnRay(rt, t);
 	// check for XZ face intersection
-    if (p.x >= -radius && p.x <= radius && p.z >= -radius && p.z <= radius) {
-      intersectFlag = true;
+    if ((p.x >= -radius) && (p.x <= radius) && (p.z >= -radius) && (p.z <= radius)) {
+	    if (t < min_t || !intersectFlag) {
+		    min_t = t;
+		    min_norm = norm;
+        if (!intersectFlag) intersectFlag = true;
+	    }
     }
   }
   if (!intersectFlag && !epsilonCheck(rt.direction.z, 0.0f)) {
 	// get appropriate XY plane intersection
-    if (rt.direction.z > EPSILON) {
+    if (rt.direction.z < 0) {
       t = ( radius - rt.origin.z)/rt.direction.z;
-	  norm = glm::vec3(0, 0, 1);
+	    norm = glm::vec3(0, 0, 1);
     } else {
       t = (-radius - rt.origin.z)/rt.direction.z;
-	  norm = glm::vec3(0, 0, -1);
+	    norm = glm::vec3(0, 0, -1);
     }
     p = getPointOnRay(rt, t);
 	// check for XY face intersection
-    if (p.x >= -radius && p.x <= radius && p.y >= -radius && p.y <= radius) {
-      intersectFlag = true;
+    if ((p.x >= -radius) && (p.x <= radius) && (p.y >= -radius) && (p.y <= radius)) {
+	    if (t < min_t || !intersectFlag) {
+		    min_t = t;
+		    min_norm = norm;
+        if (!intersectFlag) intersectFlag = true;
+	    }
     }
   }
 
   if (!intersectFlag) return -1;
 
   // shift intersection back to "world space"
-  glm::vec3 realIntersectionPoint = multiplyMV(box.transform, glm::vec4(p, 1.0f));
+  glm::vec3 realIntersectionPoint = multiplyMV(box.transform, glm::vec4(getPointOnRay(rt, min_t), 1.0f));
   glm::vec3 realOrigin = multiplyMV(box.transform, glm::vec4(0,0,0,1));
 
   intersectionPoint = realIntersectionPoint;
-  normal = glm::normalize(multiplyMV(box.inverseTransform, glm::vec4(norm, 0.0f)));
+  normal = glm::normalize(multiplyMV(box.inverseTransform, glm::vec4(min_norm, 0.0f)));
         
   return glm::length(r.origin - realIntersectionPoint);
 }

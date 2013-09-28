@@ -115,16 +115,14 @@ __global__ void raytraceRay(glm::vec2 resolution, float time, cameraData cam, in
 	  int i;
 	  float intersect = -1;
     float tmp = -1;
-	  glm::vec3 intersectionPoint = glm::vec3(0, 0, 0);
-	  glm::vec3 normal = glm::vec3(0, 0, 0);
-    glm::vec3 &intersectionPointRef = intersectionPoint;
-    glm::vec3 &normalRef = normal;
+	  glm::vec3 intersectionPoint;
+	  glm::vec3 normal;
 	  for (i=0; i<numberOfGeoms; i++) {
 	    staticGeom geom = geoms[i];
 	    if (geom.type == SPHERE) {
-	      tmp = sphereIntersectionTest(geom, camera_ray, intersectionPointRef, normalRef);
+	      tmp = sphereIntersectionTest(geom, camera_ray, intersectionPoint, normal);
 	    } else if (geom.type == CUBE) {
-	      tmp = boxIntersectionTest(geom, camera_ray, intersectionPointRef, normalRef);
+	      tmp = boxIntersectionTest(geom, camera_ray, intersectionPoint, normal);
       }
       if (tmp > 0) { // we have an intersection
         if (intersect > 0) { // intersection already detected
