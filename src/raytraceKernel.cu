@@ -43,7 +43,7 @@ __host__ __device__ glm::vec3 generateRandomNumberFromThread(glm::vec2 resolutio
 
 //DALTON: DONE
 //Function that does the initial raycast from the camera
-__host__ __device__ ray raycastFromCameraKernel(glm::vec2 resolution, float time, int x, int y, glm::vec3 eye, glm::vec3 view, glm::vec3 up, glm::vec2 fov){
+__host__ __device__ ray raycastFromCameraKernel(glm::vec2 resolution, int iterations, int x, int y, glm::vec3 eye, glm::vec3 view, glm::vec3 up, glm::vec2 fov){
   ray r;
   r.origin = eye;
   float x_frac = (x - resolution.x/2 + 0.5)/resolution.x; // X offset from center in pixels as fraction of image half-width
@@ -101,43 +101,41 @@ __global__ void sendImageToPBO(uchar4* PBOpos, glm::vec2 resolution, glm::vec3* 
   }
 }
 
+__host__ __device__ glm::vec3 clampRGB(glm::vec3 color){
+    if(color[0]<0){
+        color[0]=0;
+    }else if(color[0]>255){
+        color[0]=255;
+    }
+    if(color[1]<0){
+        color[1]=0;
+    }else if(color[1]>255){
+        color[1]=255;
+    }
+    if(color[2]<0){
+        color[2]=0;
+    }else if(color[2]>255){
+        color[2]=255;
+    }
+    return color;
+}
+
 //TODO: IMPLEMENT THIS FUNCTION
 //Core raytracer kernel
-__global__ void raytraceRay(glm::vec2 resolution, float time, cameraData cam, int rayDepth, glm::vec3* colors,
-                            staticGeom* geoms, int numberOfGeoms){
+__global__ void raytraceRay(glm::vec2 resolution, int iterations, cameraData cam, int rayDepth, glm::vec3* colors,
+                            staticGeom* geoms, int numberOfGeoms, material* materials){
 
   int x = (blockIdx.x * blockDim.x) + threadIdx.x;
   int y = (blockIdx.y * blockDim.y) + threadIdx.y;
   int index = x + (y * resolution.x);
 
   if((x<=resolution.x && y<=resolution.y)){
-    ray camera_ray = raycastFromCameraKernel(resolution, time, x, y, cam.position, cam.view, cam.up, cam.fov);
-	  int i;
-	  float intersect = -1;
-    float tmp = -1;
-	  glm::vec3 intersectionPoint;
-	  glm::vec3 normal;
-	  for (i=0; i<numberOfGeoms; i++) {
-	    staticGeom geom = geoms[i];
-	    if (geom.type == SPHERE) {
-	      tmp = sphereIntersectionTest(geom, camera_ray, intersectionPoint, normal);
-	    } else if (geom.type == CUBE) {
-	      tmp = boxIntersectionTest(geom, camera_ray, intersectionPoint, normal);
-      }
-      if (tmp > 0) { // we have an intersection
-        if (intersect > 0) { // intersection already detected
-          if (tmp < intersect) intersect = tmp; // this one is closer
-        } else { // no intersection detected yet
-          intersect = tmp;
-        }
-      }
-	  }
+    ray camera_ray = raycastFromCameraKernel(resolution, iterations, x, y, cam.position, cam.view, cam.up, cam.fov);
+    intersection intersect;
+    getIntersection(camera_ray, geoms, numberOfGeoms, materials, intersect);
     //colors[index] = generateRandomNumberFromThread(resolution, time, x, y);
-    if (intersect > 0) {
-      float scale = 0.1;
-      colors[index] = glm::vec3(1/(scale*intersect), 1/(scale*intersect), 1/(scale*intersect));
-    } else {
-      colors[index] = glm::vec3(0.0f, 0.0f, 0.0f);
+    if (intersect.t > 0) {
+      colors[index] = clampRGB(colors[index] + intersect.mat.color);
     }
   }
 }
@@ -207,7 +205,7 @@ void cudaRaytraceCore(uchar4* PBOpos, camera* renderCam, int frame, int iteratio
   cam.fov = renderCam->fov;
 
   //kernel launches
-  raytraceRay<<<fullBlocksPerGrid, threadsPerBlock>>>(renderCam->resolution, (float)iterations, cam, traceDepth, cudaimage, cudageoms, numberOfGeoms);
+  raytraceRay<<<fullBlocksPerGrid, threadsPerBlock>>>(renderCam->resolution, iterations, cam, traceDepth, cudaimage, cudageoms, numberOfGeoms, cudamaterials);
 
   sendImageToPBO<<<fullBlocksPerGrid, threadsPerBlock>>>(PBOpos, renderCam->resolution, cudaimage);
 

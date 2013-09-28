@@ -68,7 +68,37 @@ __host__ __device__ glm::vec3 getSignOfRay(ray r){
   return glm::vec3((int)(inv_direction.x < 0), (int)(inv_direction.y < 0), (int)(inv_direction.z < 0));
 }
 
-//DALTON: IN PROGRESS
+__host__ __device__ float getIntersection(ray r, staticGeom* geoms, int numberOfGeoms, material* materials, intersection& intersect) {
+  int i;
+  int intersect_i;
+  float tmp;
+  intersect.t = -1; // initialize intersection
+	for (i=0; i<numberOfGeoms; i++) {
+	  staticGeom geom = geoms[i];
+	  if (geom.type == SPHERE) {
+	    tmp = sphereIntersectionTest(geom, r, intersect.point, intersect.normal);
+	  } else if (geom.type == CUBE) {
+      tmp = boxIntersectionTest(geom, r, intersect.point, intersect.normal);
+    }
+    if (tmp > 0) { // we have an intersection
+      if (intersect.t > 0) { // intersection already detected
+        if (tmp < intersect.t) {
+          intersect.t = tmp; // this one is closer
+          intersect_i = i;
+        }
+      } else { // no intersection detected yet
+        intersect.t = tmp;
+        intersect_i = i;
+      }
+    }
+	}
+  if (intersect.t > 0) {
+    intersect.mat = materials[geoms[intersect_i].materialid];
+  }
+  return intersect.t;
+}
+
+//DALTON: DONE
 //Cube intersection test, return -1 if no intersection, otherwise, distance to intersection
 __host__ __device__ float boxIntersectionTest(staticGeom box, ray r, glm::vec3& intersectionPoint, glm::vec3& normal){
   // standard cube is axis-aligned, origin-centered, unit side length
@@ -104,7 +134,7 @@ __host__ __device__ float boxIntersectionTest(staticGeom box, ray r, glm::vec3& 
     }
     p = getPointOnRay(rt, t);
 	// check for YZ face intersection
-    if ((p.y >= -radius) && (p.y <= radius) && (p.z >= -radius) && (p.z <= radius)) {
+    if ((t>0) && (p.y >= -radius) && (p.y <= radius) && (p.z >= -radius) && (p.z <= radius)) {
       min_t = t;
 	    min_norm = norm;
 	    intersectFlag = true;
@@ -121,7 +151,7 @@ __host__ __device__ float boxIntersectionTest(staticGeom box, ray r, glm::vec3& 
     }
     p = getPointOnRay(rt, t);
 	// check for XZ face intersection
-    if ((p.x >= -radius) && (p.x <= radius) && (p.z >= -radius) && (p.z <= radius)) {
+    if ((t>0) && (p.x >= -radius) && (p.x <= radius) && (p.z >= -radius) && (p.z <= radius)) {
 	    if (t < min_t || !intersectFlag) {
 		    min_t = t;
 		    min_norm = norm;
@@ -140,7 +170,7 @@ __host__ __device__ float boxIntersectionTest(staticGeom box, ray r, glm::vec3& 
     }
     p = getPointOnRay(rt, t);
 	// check for XY face intersection
-    if ((p.x >= -radius) && (p.x <= radius) && (p.y >= -radius) && (p.y <= radius)) {
+    if ((t>0) && (p.x >= -radius) && (p.x <= radius) && (p.y >= -radius) && (p.y <= radius)) {
 	    if (t < min_t || !intersectFlag) {
 		    min_t = t;
 		    min_norm = norm;

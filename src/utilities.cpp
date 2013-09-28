@@ -33,7 +33,7 @@ std::string utilityCore::convertIntToString(int number){
    return ss.str();
 }
 
-glm::vec3 utilityCore::clampRGB(glm::vec3 color){
+__host__ __device__ glm::vec3 utilityCore::clampRGB(glm::vec3 color){
     if(color[0]<0){
         color[0]=0;
     }else if(color[0]>255){

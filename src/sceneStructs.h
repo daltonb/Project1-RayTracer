@@ -73,4 +73,11 @@ struct material{
 	float emittance;
 };
 
+struct intersection {
+  float t;
+  glm::vec3 point;
+  glm::vec3 normal;
+  material mat;
+};
+
 #endif //CUDASTRUCTS_H
