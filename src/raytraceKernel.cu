@@ -101,23 +101,10 @@ __global__ void sendImageToPBO(uchar4* PBOpos, glm::vec2 resolution, glm::vec3* 
   }
 }
 
-__host__ __device__ glm::vec3 clampRGB(glm::vec3 color){
-    if(color[0]<0){
-        color[0]=0;
-    }else if(color[0]>255){
-        color[0]=255;
-    }
-    if(color[1]<0){
-        color[1]=0;
-    }else if(color[1]>255){
-        color[1]=255;
-    }
-    if(color[2]<0){
-        color[2]=0;
-    }else if(color[2]>255){
-        color[2]=255;
-    }
-    return color;
+__host__ __device__ glm::vec3 getDiffuseBounceDirection(glm::vec3 normal, int iterations, int index) {
+  thrust::default_random_engine rng(hash(index*iterations));
+  thrust::uniform_real_distribution<float> u01(0,1);
+  return calculateRandomDirectionInHemisphere(normal, u01(rng), u01(rng));
 }
 
 //TODO: IMPLEMENT THIS FUNCTION
@@ -133,10 +120,26 @@ __global__ void raytraceRay(glm::vec2 resolution, int iterations, cameraData cam
     ray camera_ray = raycastFromCameraKernel(resolution, iterations, x, y, cam.position, cam.view, cam.up, cam.fov);
     intersection intersect;
     getIntersection(camera_ray, geoms, numberOfGeoms, materials, intersect);
-    //colors[index] = generateRandomNumberFromThread(resolution, time, x, y);
+    glm::vec3 color = glm::vec3(0.0f, 0.0f, 0.0f);
     if (intersect.t > 0) {
-      colors[index] = clampRGB(colors[index] + intersect.mat.color);
+      color = intersect.mat.color;
+      float emittance = intersect.mat.emittance;
+      if (emittance) {
+        color = color * emittance;
+      } else {
+        ray bounce_ray;
+        bounce_ray.origin = intersect.point;
+        bounce_ray.direction = getDiffuseBounceDirection(intersect.normal, iterations, index);
+        getIntersection(bounce_ray, geoms, numberOfGeoms, materials, intersect);
+        emittance = intersect.mat.emittance;
+        if (emittance) {
+          color = color * emittance;
+        } else {
+          color = glm::vec3(0.0f, 0.0f, 0.0f);
+        }
+      }
     }
+    colors[index] = (colors[index] * (float)iterations + color)/(float)(iterations+1);
   }
 }
 
