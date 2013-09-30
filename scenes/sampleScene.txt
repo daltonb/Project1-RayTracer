@@ -233,15 +233,23 @@ OBJECT 8
 cube
 material 12
 frame 0
-TRANS       0 5 10
-ROTAT       20 30 40
-SCALE       .5 .5 .5
+TRANS       0 5 1
+ROTAT       0 45 45
+SCALE       1 1 1
 
 
 OBJECT 9
 cube
+material 0 
+frame 0
+TRANS       0 9.710 0
+ROTAT       0 0 90
+SCALE       .01 3 3
+
+OBJECT 10
+cube
 material 8 
 frame 0
-TRANS       0 10 0
+TRANS       0 9.705 0
 ROTAT       0 0 90
-SCALE       .3 3 3
+SCALE       .01 3 3

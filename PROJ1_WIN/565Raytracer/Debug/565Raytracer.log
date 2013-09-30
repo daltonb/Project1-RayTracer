@@ -1,4 +1,4 @@
-﻿Build started 9/26/2013 9:38:19 PM.
+﻿Build started 9/29/2013 3:18:46 PM.
      1>Project "S:\GitHub\Project1-RayTracer\PROJ1_WIN\565Raytracer\565Raytracer.vcxproj" on node 2 (build target(s)).
      1>InitializeBuildStatus:
          Creating "Debug\565Raytracer.unsuccessfulbuild" because "AlwaysCreate" was specified.
@@ -8,21 +8,42 @@
        Skipping target "AddCudaCompilePropsDeps" because all output files are up-to-date with respect to the input files.
        CudaBuild:
          Compiling CUDA source file ..\..\src\raytraceKernel.cu...
-         cmd.exe /C "C:\Users\dbanks\AppData\Local\Temp\54847b980a0042c8ad846af3a7b3f663.cmd"
+         cmd.exe /C "C:\Users\dbanks\AppData\Local\Temp\117d8180fa02461083f6a46070782de5.cmd"
          "C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v4.0\bin\nvcc.exe" -gencode=arch=compute_10,code=\"sm_10,compute_10\" --use-local-env --cl-version 2010 -ccbin "c:\Program Files (x86)\Microsoft Visual Studio 10.0\VC\bin" -I"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v4.0\include" -I"C:/ProgramData/NVIDIA Corporation/NVIDIA GPU Computing SDK 4.0/C/common/inc" -I"../shared/glew/includes" -I"../shared/freeglut/includes" -I"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v4.0\include"  -G0  --keep-dir "Debug" -maxrregcount=0  --machine 32 --compile  -D_NEXUS_DEBUG -g    -Xcompiler "/EHsc /nologo /Od /Zi  /MDd " -o "S:\GitHub\Project1-RayTracer\PROJ1_WIN\565Raytracer\Win32/Debug/raytraceKernel.cu.obj" "S:\GitHub\Project1-RayTracer\src\raytraceKernel.cu"
          
          C:\user>"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v4.0\bin\nvcc.exe" -gencode=arch=compute_10,code=\"sm_10,compute_10\" --use-local-env --cl-version 2010 -ccbin "c:\Program Files (x86)\Microsoft Visual Studio 10.0\VC\bin" -I"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v4.0\include" -I"C:/ProgramData/NVIDIA Corporation/NVIDIA GPU Computing SDK 4.0/C/common/inc" -I"../shared/glew/includes" -I"../shared/freeglut/includes" -I"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v4.0\include"  -G0  --keep-dir "Debug" -maxrregcount=0  --machine 32 --compile  -D_NEXUS_DEBUG -g    -Xcompiler "/EHsc /nologo /Od /Zi  /MDd " -o "S:\GitHub\Project1-RayTracer\PROJ1_WIN\565Raytracer\Win32/Debug/raytraceKernel.cu.obj" "S:\GitHub\Project1-RayTracer\src\raytraceKernel.cu" 
          raytraceKernel.cu
-         tmpxft_000010a0_00000000-0_raytraceKernel.cudafe1.gpu
-         tmpxft_000010a0_00000000-5_raytraceKernel.cudafe2.gpu
+         tmpxft_00000e08_00000000-0_raytraceKernel.cudafe1.gpu
+         tmpxft_00000e08_00000000-5_raytraceKernel.cudafe2.gpu
          raytraceKernel.cu
      1>s:\github\project1-raytracer\src\glm\core\_swizzle.hpp(194): warning : missing return statement at end of non-void function "glm::detail::_swizzle_base2<ValueType, VecType, N, E0, E1, E2, E3, 1>::operator=(const glm::detail::_swizzle_base2<ValueType, VecType, N, E0, E1, E2, E3, 1>::Stub &)"
          
-     1>ptxas C : /Users/dbanks/AppData/Local/Temp/tmpxft_000010a0_00000000-1_raytraceKernel.ptx, line 260; warning : Double is not supported. Demoting to float
-         tmpxft_000010a0_00000000-0_raytraceKernel.cudafe1.cpp
-         tmpxft_000010a0_00000000-11_raytraceKernel.ii
+     1>ptxas C : /Users/dbanks/AppData/Local/Temp/tmpxft_00000e08_00000000-1_raytraceKernel.ptx, line 260; warning : Double is not supported. Demoting to float
+         tmpxft_00000e08_00000000-0_raytraceKernel.cudafe1.cpp
+         tmpxft_00000e08_00000000-11_raytraceKernel.ii
        ClCompile:
-         All outputs are up-to-date.
+         c:\Program Files (x86)\Microsoft Visual Studio 10.0\VC\bin\CL.exe /c /I"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v4.0\include" /I"C:\ProgramData\NVIDIA Corporation\NVIDIA GPU Computing SDK 4.0\C\common\inc" /I../shared/glew/include /I../shared/freeglut/include /I"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v4.0\include" /ZI /nologo /W3 /WX- /Od /Oy- /D WIN32 /D _DEBUG /D _CONSOLE /D _UNICODE /D UNICODE /Gm /EHsc /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Fo"Debug\\" /Fd"Debug\vc100.pdb" /Gd /TP /analyze- /errorReport:prompt ..\..\src\main.cpp ..\..\src\scene.cpp ..\..\src\utilities.cpp
+         utilities.cpp
+         main.cpp
+         Note: including lib: glut32.lib
+         
+     1>s:\github\project1-raytracer\src\main.cpp(108): warning C4018: '<' : signed/unsigned mismatch
+     1>s:\github\project1-raytracer\src\main.cpp(117): warning C4018: '<' : signed/unsigned mismatch
+     1>s:\github\project1-raytracer\src\main.cpp(120): warning C4018: '<' : signed/unsigned mismatch
+         Generating Code...
+         Compiling...
+         scene.cpp
+     1>s:\github\project1-raytracer\src\scene.cpp(150): warning C4244: '=' : conversion from 'double' to 'float', possible loss of data
+     1>s:\github\project1-raytracer\src\scene.cpp(204): warning C4244: 'initializing' : conversion from 'double' to 'float', possible loss of data
+     1>s:\github\project1-raytracer\src\scene.cpp(206): warning C4244: 'initializing' : conversion from 'double' to 'float', possible loss of data
+     1>s:\github\project1-raytracer\src\scene.cpp(240): warning C4244: '=' : conversion from 'double' to 'float', possible loss of data
+     1>s:\github\project1-raytracer\src\scene.cpp(245): warning C4244: '=' : conversion from 'double' to 'float', possible loss of data
+     1>s:\github\project1-raytracer\src\scene.cpp(247): warning C4244: '=' : conversion from 'double' to 'float', possible loss of data
+     1>s:\github\project1-raytracer\src\scene.cpp(249): warning C4244: '=' : conversion from 'double' to 'float', possible loss of data
+     1>s:\github\project1-raytracer\src\scene.cpp(251): warning C4244: '=' : conversion from 'double' to 'float', possible loss of data
+     1>s:\github\project1-raytracer\src\scene.cpp(256): warning C4244: '=' : conversion from 'double' to 'float', possible loss of data
+     1>s:\github\project1-raytracer\src\scene.cpp(258): warning C4244: '=' : conversion from 'double' to 'float', possible loss of data
+         Generating Code...
          All outputs are up-to-date.
        ManifestResourceCompile:
          All outputs are up-to-date.
@@ -49,4 +70,4 @@
 
 Build succeeded.
 
-Time Elapsed 00:00:13.59
+Time Elapsed 00:00:26.05

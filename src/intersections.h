@@ -8,6 +8,7 @@
 
 #include "sceneStructs.h"
 #include "cudaMat4.h"
+
 #include "glm/glm.hpp"
 #include "utilities.h"
 #include <thrust/random.h>
@@ -183,10 +184,9 @@ __host__ __device__ float boxIntersectionTest(staticGeom box, ray r, glm::vec3& 
 
   // shift intersection back to "world space"
   glm::vec3 realIntersectionPoint = multiplyMV(box.transform, glm::vec4(getPointOnRay(rt, min_t), 1.0f));
-  glm::vec3 realOrigin = multiplyMV(box.transform, glm::vec4(0,0,0,1));
 
   intersectionPoint = realIntersectionPoint;
-  normal = glm::normalize(multiplyMV(box.inverseTransform, glm::vec4(min_norm, 0.0f)));
+  normal = glm::normalize(multiplyMV(box.transform, glm::vec4(min_norm, 0.0f)));
         
   return glm::length(r.origin - realIntersectionPoint);
 }

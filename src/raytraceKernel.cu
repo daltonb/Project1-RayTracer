@@ -123,23 +123,26 @@ __global__ void raytraceRay(glm::vec2 resolution, int iterations, cameraData cam
     glm::vec3 color = glm::vec3(0.0f, 0.0f, 0.0f);
     if (intersect.t > 0) {
       color = intersect.mat.color;
-      float emittance = intersect.mat.emittance;
-      if (emittance) {
-        color = color * emittance;
-      } else {
-        ray bounce_ray;
-        bounce_ray.origin = intersect.point;
-        bounce_ray.direction = getDiffuseBounceDirection(intersect.normal, iterations, index);
-        getIntersection(bounce_ray, geoms, numberOfGeoms, materials, intersect);
-        emittance = intersect.mat.emittance;
+      if (1) { // TOGGLE SIMULATION ON/OFF
+        float emittance = intersect.mat.emittance;
         if (emittance) {
           color = color * emittance;
         } else {
-          color = glm::vec3(0.0f, 0.0f, 0.0f);
+          ray bounce_ray;
+          bounce_ray.origin = intersect.point;
+          bounce_ray.direction = getDiffuseBounceDirection(intersect.normal, iterations, index);
+          //intersection intersect2;
+          getIntersection(bounce_ray, geoms, numberOfGeoms, materials, intersect);
+          emittance = intersect.mat.emittance;
+          if (emittance) {
+            color = color * emittance;
+          } else {
+            color = glm::vec3(0.0f, 0.0f, 0.0f);
+          }
         }
       }
     }
-    colors[index] = (colors[index] * (float)iterations + color)/(float)(iterations+1);
+    colors[index] += color;
   }
 }
 
