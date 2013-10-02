@@ -101,56 +101,91 @@ __global__ void sendImageToPBO(uchar4* PBOpos, glm::vec2 resolution, glm::vec3* 
   }
 }
 
-__host__ __device__ glm::vec3 getDiffuseBounceDirection(glm::vec3 normal, int iterations, int index) {
-  thrust::default_random_engine rng(hash(index*iterations));
+__host__ __device__ glm::vec3 getDiffuseBounceDirection(glm::vec3 normal, int iterations, int index, int bounce_count) {
+  thrust::default_random_engine rng(hash(index*iterations*bounce_count*clock()));
   thrust::uniform_real_distribution<float> u01(0,1);
   return calculateRandomDirectionInHemisphere(normal, u01(rng), u01(rng));
 }
 
-//TODO: IMPLEMENT THIS FUNCTION
-//Core raytracer kernel
-__global__ void raytraceRay(glm::vec2 resolution, int iterations, cameraData cam, int rayDepth, glm::vec3* colors,
-                            staticGeom* geoms, int numberOfGeoms, material* materials){
+//DALTON: IN PROGRESS
+//Launch camera rays and compute first intersection
+__global__ void traceFirstSegment(glm::vec2 resolution, int iterations, cameraData cam, int rayDepth, glm::vec3* colors,
+                            staticGeom* geoms, int numberOfGeoms, material* materials, raySegment* raypool){
+
 
   int x = (blockIdx.x * blockDim.x) + threadIdx.x;
   int y = (blockIdx.y * blockDim.y) + threadIdx.y;
   int index = x + (y * resolution.x);
 
   if((x<=resolution.x && y<=resolution.y)){
+    raySegment* rs = &(raypool[index]);
+    // initialize ray state
+    rs->active = true;
+    rs->color = glm::vec3(1.0f, 1.0f, 1.0f);
+    rs->emittance = 0;
     ray camera_ray = raycastFromCameraKernel(resolution, iterations, x, y, cam.position, cam.view, cam.up, cam.fov);
-    intersection intersect;
-    getIntersection(camera_ray, geoms, numberOfGeoms, materials, intersect);
-    glm::vec3 color = glm::vec3(0.0f, 0.0f, 0.0f);
-    if (intersect.t > 0) {
-      color = intersect.mat.color;
-      if (1) { // TOGGLE SIMULATION ON/OFF
-        float emittance = intersect.mat.emittance;
-        if (emittance) {
-          color = color * emittance;
-        } else {
-          ray bounce_ray;
-          bounce_ray.origin = intersect.point;
-          bounce_ray.direction = getDiffuseBounceDirection(intersect.normal, iterations, index);
-          //intersection intersect2;
-          getIntersection(bounce_ray, geoms, numberOfGeoms, materials, intersect);
-          emittance = intersect.mat.emittance;
-          if (emittance) {
-            color = color * emittance;
-          } else {
-            color = glm::vec3(0.0f, 0.0f, 0.0f);
-          }
+    getIntersection(camera_ray, geoms, numberOfGeoms, materials, rs);
+    // process intersection
+    if (rs->intersect.t > 0) {
+        rs->color.x *= (float)(rs->intersect.mat.color.x);
+        rs->color.y *= (float)(rs->intersect.mat.color.y);
+        rs->color.z *= (float)(rs->intersect.mat.color.z);
+        if (rs->intersect.mat.emittance > 0) {
+          rs->emittance = rs->intersect.mat.emittance;
+          rs->active = false;
         }
+    } else {
+      rs->active = false;
+    }
+  }
+}
+
+//Launch next ray and compute next intersection
+__global__ void traceNextSegment(glm::vec2 resolution, int iterations, int bounce_count, cameraData cam, int rayDepth, glm::vec3* colors,
+                            staticGeom* geoms, int numberOfGeoms, material* materials, raySegment* raypool){
+
+
+  int x = (blockIdx.x * blockDim.x) + threadIdx.x;
+  int y = (blockIdx.y * blockDim.y) + threadIdx.y;
+  int index = x + (y * resolution.x);
+
+  if((x<=resolution.x && y<=resolution.y)){
+    raySegment* rs = &(raypool[index]);
+    if (rs->active) {
+      ray bounce_ray;
+      bounce_ray.origin = rs->intersect.point;
+      bounce_ray.direction = getDiffuseBounceDirection(rs->intersect.normal, iterations, index, bounce_count);
+      getIntersection(bounce_ray, geoms, numberOfGeoms, materials, rs);
+      // process intersection
+      if (rs->intersect.t > 0) {
+          rs->color.x *= (float)(rs->intersect.mat.color.x);
+          rs->color.y *= (float)(rs->intersect.mat.color.y);
+          rs->color.z *= (float)(rs->intersect.mat.color.z);
+          if (rs->intersect.mat.emittance > 0) {
+            rs->emittance = rs->intersect.mat.emittance;
+            rs->active = false;
+          }
+      } else {
+        rs->active = false;
       }
     }
-    colors[index] += color;
   }
+}
+
+//Calculate emittance * absorption
+__global__ void updateColors(glm::vec2 resolution, glm::vec3* colors, raySegment* raypool){
+  int x = (blockIdx.x * blockDim.x) + threadIdx.x;
+  int y = (blockIdx.y * blockDim.y) + threadIdx.y;
+  int index = x + (y * resolution.x);
+
+  colors[index] += (raypool[index].color * raypool[index].emittance);
 }
 
 // DALTON: DONE
 // Wrapper for the __global__ call that sets up the kernel calls and does a ton of memory management
 void cudaRaytraceCore(uchar4* PBOpos, camera* renderCam, int frame, int iterations, material* materials, int numberOfMaterials, geom* geoms, int numberOfGeoms){
   
-  int traceDepth = 1; //determines how many bounces the raytracer traces
+  int traceDepth = 3; //determines how many bounces the raytracer traces
 
   // set up crucial magic
   int tileSize = 8;
@@ -180,22 +215,21 @@ void cudaRaytraceCore(uchar4* PBOpos, camera* renderCam, int frame, int iteratio
   cudaMalloc((void**)&cudageoms, numberOfGeoms*sizeof(staticGeom));
   cudaMemcpy(cudageoms, geomList, numberOfGeoms*sizeof(staticGeom), cudaMemcpyHostToDevice);
 
-  //DALTON
   //package materials and send to GPU
   material* materialList = new material[numberOfMaterials];
   for(int i=0; i<numberOfMaterials; i++) {
-	material newMaterial;
-	newMaterial.color = materials[i].color;
-	newMaterial.specularExponent = materials[i].specularExponent;
-	newMaterial.specularColor = materials[i].specularColor;
-	newMaterial.hasReflective = materials[i].hasReflective;
-	newMaterial.hasRefractive = materials[i].hasRefractive;
-	newMaterial.indexOfRefraction = materials[i].indexOfRefraction;
-	newMaterial.hasScatter = materials[i].hasScatter;
-	newMaterial.absorptionCoefficient = materials[i].absorptionCoefficient;
-	newMaterial.reducedScatterCoefficient = materials[i].reducedScatterCoefficient;
-	newMaterial.emittance = materials[i].emittance;
-	materialList[i] = newMaterial;
+	  material newMaterial;
+	  newMaterial.color = materials[i].color;
+	  newMaterial.specularExponent = materials[i].specularExponent;
+	  newMaterial.specularColor = materials[i].specularColor;
+	  newMaterial.hasReflective = materials[i].hasReflective;
+	  newMaterial.hasRefractive = materials[i].hasRefractive;
+	  newMaterial.indexOfRefraction = materials[i].indexOfRefraction;
+	  newMaterial.hasScatter = materials[i].hasScatter;
+	  newMaterial.absorptionCoefficient = materials[i].absorptionCoefficient;
+	  newMaterial.reducedScatterCoefficient = materials[i].reducedScatterCoefficient;
+	  newMaterial.emittance = materials[i].emittance;
+	  materialList[i] = newMaterial;
   };
 
   material* cudamaterials = NULL;
@@ -210,9 +244,20 @@ void cudaRaytraceCore(uchar4* PBOpos, camera* renderCam, int frame, int iteratio
   cam.up = renderCam->ups[frame];
   cam.fov = renderCam->fov;
 
-  //kernel launches
-  raytraceRay<<<fullBlocksPerGrid, threadsPerBlock>>>(renderCam->resolution, iterations, cam, traceDepth, cudaimage, cudageoms, numberOfGeoms, cudamaterials);
+  //create ray segment pool
+  raySegment* cudaraypool = NULL;
+  cudaMalloc((void**)&cudaraypool, (int)renderCam->resolution.x*(int)renderCam->resolution.y*sizeof(raySegment)); 
 
+  //kernel launches
+  traceFirstSegment<<<fullBlocksPerGrid, threadsPerBlock>>>(renderCam->resolution, iterations, cam, traceDepth, cudaimage, cudageoms, numberOfGeoms, cudamaterials, cudaraypool);
+  cudaDeviceSynchronize();
+  for (int i=0; i<traceDepth-1; i++) {
+    traceNextSegment<<<fullBlocksPerGrid, threadsPerBlock>>>(renderCam->resolution, iterations, i+1, cam, traceDepth, cudaimage, cudageoms, numberOfGeoms, cudamaterials, cudaraypool);
+    cudaDeviceSynchronize();
+  }
+  updateColors<<<fullBlocksPerGrid, threadsPerBlock>>>(renderCam->resolution, cudaimage, cudaraypool);
+  cudaDeviceSynchronize();
+  
   sendImageToPBO<<<fullBlocksPerGrid, threadsPerBlock>>>(PBOpos, renderCam->resolution, cudaimage);
 
   //retrieve image from GPU
@@ -221,12 +266,13 @@ void cudaRaytraceCore(uchar4* PBOpos, camera* renderCam, int frame, int iteratio
   //free up stuff, or else we'll leak memory like a madman
   cudaFree( cudaimage );
   cudaFree( cudageoms );
-  cudaFree( cudamaterials ); //Dalton
+  cudaFree( cudamaterials );
+  cudaFree( cudaraypool );
   delete geomList;
-  delete materialList; //Dalton
+  delete materialList;
 
   // make certain the kernel has completed
-  cudaThreadSynchronize();
+  cudaDeviceSynchronize(); // cudaThreadSynchronize is deprecated
 
   checkCUDAError("Kernel failed!");
 }

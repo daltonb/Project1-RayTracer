@@ -18,6 +18,7 @@ __host__ __device__ glm::vec3 getPointOnRay(ray r, float t);
 __host__ __device__ glm::vec3 multiplyMV(cudaMat4 m, glm::vec4 v);
 __host__ __device__ glm::vec3 getSignOfRay(ray r);
 __host__ __device__ glm::vec3 getInverseDirectionOfRay(ray r);
+__host__ __device__ float getIntersection(ray r, staticGeom* geoms, int numberOfGeoms, material* materials, intersection& intersect);
 __host__ __device__ float boxIntersectionTest(staticGeom box, ray r, glm::vec3& intersectionPoint, glm::vec3& normal);
 __host__ __device__ float sphereIntersectionTest(staticGeom sphere, ray r, glm::vec3& intersectionPoint, glm::vec3& normal);
 __host__ __device__ glm::vec3 getRandomPointOnCube(staticGeom cube, float randomSeed);
@@ -69,34 +70,34 @@ __host__ __device__ glm::vec3 getSignOfRay(ray r){
   return glm::vec3((int)(inv_direction.x < 0), (int)(inv_direction.y < 0), (int)(inv_direction.z < 0));
 }
 
-__host__ __device__ float getIntersection(ray r, staticGeom* geoms, int numberOfGeoms, material* materials, intersection& intersect) {
+__host__ __device__ float getIntersection(ray r, staticGeom* geoms, int numberOfGeoms, material* materials, raySegment* rs) {
   int i;
   int intersect_i;
-  float tmp;
-  intersect.t = -1; // initialize intersection
-	for (i=0; i<numberOfGeoms; i++) {
+  rs->intersect.t = -1; // initialize intersection
+  float tmp = -1;
+  for (i=0; i<numberOfGeoms; i++) {
 	  staticGeom geom = geoms[i];
 	  if (geom.type == SPHERE) {
-	    tmp = sphereIntersectionTest(geom, r, intersect.point, intersect.normal);
+	    tmp = sphereIntersectionTest(geom, r, rs->intersect.point, rs->intersect.normal);
 	  } else if (geom.type == CUBE) {
-      tmp = boxIntersectionTest(geom, r, intersect.point, intersect.normal);
+      tmp = boxIntersectionTest(geom, r, rs->intersect.point, rs->intersect.normal);
     }
     if (tmp > 0) { // we have an intersection
-      if (intersect.t > 0) { // intersection already detected
-        if (tmp < intersect.t) {
-          intersect.t = tmp; // this one is closer
+      if (rs->intersect.t > 0) { // intersection already detected
+        if (tmp < rs->intersect.t) {
+          rs->intersect.t = tmp; // this one is closer
           intersect_i = i;
         }
       } else { // no intersection detected yet
-        intersect.t = tmp;
+        rs->intersect.t = tmp;
         intersect_i = i;
       }
     }
 	}
-  if (intersect.t > 0) {
-    intersect.mat = materials[geoms[intersect_i].materialid];
+  if (rs->intersect.t > 0) {
+    rs->intersect.mat = materials[geoms[intersect_i].materialid];
   }
-  return intersect.t;
+  return rs->intersect.t;
 }
 
 //DALTON: DONE

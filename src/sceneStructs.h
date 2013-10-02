@@ -80,4 +80,11 @@ struct intersection {
   material mat;
 };
 
+struct raySegment {
+  bool active;
+  intersection intersect;
+  glm::vec3 color;
+  float emittance;
+};
+
 #endif //CUDASTRUCTS_H
