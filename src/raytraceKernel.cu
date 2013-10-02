@@ -45,9 +45,29 @@ __host__ __device__ glm::vec3 generateRandomNumberFromThread(glm::vec2 resolutio
 //Function that does the initial raycast from the camera
 __host__ __device__ ray raycastFromCameraKernel(glm::vec2 resolution, int iterations, int x, int y, glm::vec3 eye, glm::vec3 view, glm::vec3 up, glm::vec2 fov){
   ray r;
+  float x_offset;
+  float y_offset;
   r.origin = eye;
-  float x_frac = (x - resolution.x/2 + 0.5)/resolution.x; // X offset from center in pixels as fraction of image half-width
-  float y_frac = (resolution.y/2 - y - 0.5)/resolution.y; // Y offset from center in pixels as fraction of image half-width
+  switch(iterations % 4) {
+    case 0:
+      x_offset = SQRT_OF_ONE_THIRTY_SECOND;
+      y_offset = SQRT_OF_ONE_EIGHTH;
+      break;
+    case 1:
+      x_offset = -SQRT_OF_ONE_THIRTY_SECOND;
+      y_offset = -SQRT_OF_ONE_EIGHTH;
+      break;
+    case 2:
+      x_offset = -SQRT_OF_ONE_EIGHTH;
+      y_offset = SQRT_OF_ONE_THIRTY_SECOND;
+      break;
+    case 3:
+      x_offset = SQRT_OF_ONE_EIGHTH;
+      y_offset = -SQRT_OF_ONE_THIRTY_SECOND;
+      break;
+  }
+  float x_frac = ((x + x_offset) - resolution.x/2 + 0.5)/resolution.x; // X offset from center in pixels as fraction of image half-width
+  float y_frac = (resolution.y/2 - (y + y_offset) - 0.5)/resolution.y; // Y offset from center in pixels as fraction of image half-width
   float x_fov = glm::tan(fov.x*PI/180); // projection of FOV.X onto image plane, 1 unit from eye
   float y_fov = glm::tan(fov.y*PI/180); // projection of FOV.Y onto image plane, 1 unit from eye
   glm::vec3 x_component = x_frac * x_fov * glm::normalize(glm::cross(up, view)); // raycast X component (i.e. pointing to the right)
@@ -101,12 +121,6 @@ __global__ void sendImageToPBO(uchar4* PBOpos, glm::vec2 resolution, glm::vec3* 
   }
 }
 
-__host__ __device__ glm::vec3 getDiffuseBounceDirection(glm::vec3 normal, int iterations, int index, int bounce_count) {
-  thrust::default_random_engine rng(hash(index*iterations*bounce_count*clock()));
-  thrust::uniform_real_distribution<float> u01(0,1);
-  return calculateRandomDirectionInHemisphere(normal, u01(rng), u01(rng));
-}
-
 //DALTON: IN PROGRESS
 //Launch camera rays and compute first intersection
 __global__ void traceFirstSegment(glm::vec2 resolution, int iterations, cameraData cam, int rayDepth, glm::vec3* colors,
@@ -154,7 +168,7 @@ __global__ void traceNextSegment(glm::vec2 resolution, int iterations, int bounc
     if (rs->active) {
       ray bounce_ray;
       bounce_ray.origin = rs->intersect.point;
-      bounce_ray.direction = getDiffuseBounceDirection(rs->intersect.normal, iterations, index, bounce_count);
+      bounce_ray.direction = getNextSegmentDirection(rs->intersect.mat, rs->intersect.incident, rs->intersect.normal, iterations, index, bounce_count);
       getIntersection(bounce_ray, geoms, numberOfGeoms, materials, rs);
       // process intersection
       if (rs->intersect.t > 0) {
@@ -185,7 +199,7 @@ __global__ void updateColors(glm::vec2 resolution, glm::vec3* colors, raySegment
 // Wrapper for the __global__ call that sets up the kernel calls and does a ton of memory management
 void cudaRaytraceCore(uchar4* PBOpos, camera* renderCam, int frame, int iterations, material* materials, int numberOfMaterials, geom* geoms, int numberOfGeoms){
   
-  int traceDepth = 3; //determines how many bounces the raytracer traces
+  int traceDepth = 4; //determines how many bounces the raytracer traces
 
   // set up crucial magic
   int tileSize = 8;

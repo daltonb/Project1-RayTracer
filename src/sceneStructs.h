@@ -76,6 +76,7 @@ struct material{
 struct intersection {
   float t;
   glm::vec3 point;
+  glm::vec3 incident;
   glm::vec3 normal;
   material mat;
 };

@@ -19,6 +19,9 @@ struct AbsorptionAndScatteringProperties{
 };
 
 //forward declaration
+__host__ __device__ glm::vec3 getNextSegmentDirection(material mat, glm::vec3 incident, glm::vec3 normal, int iterations, int index, int bounce_count);
+__host__ __device__ glm::vec3 getReflectedBounceDirection(glm::vec3 incident, glm::vec3 normal);
+__host__ __device__ glm::vec3 getDiffuseBounceDirection(glm::vec3 normal, int iterations, int index, int bounce_count);
 __host__ __device__ bool calculateScatterAndAbsorption(ray& r, float& depth, AbsorptionAndScatteringProperties& currentAbsorptionAndScattering, glm::vec3& unabsorbedColor, material m, float randomFloatForScatteringDistance, float randomFloat2, float randomFloat3);
 __host__ __device__ glm::vec3 getRandomDirectionInSphere(float xi1, float xi2);
 __host__ __device__ glm::vec3 calculateTransmission(glm::vec3 absorptionCoefficient, float distance);
@@ -26,6 +29,24 @@ __host__ __device__ glm::vec3 calculateTransmissionDirection(glm::vec3 normal, g
 __host__ __device__ glm::vec3 calculateReflectionDirection(glm::vec3 normal, glm::vec3 incident);
 __host__ __device__ Fresnel calculateFresnel(glm::vec3 normal, glm::vec3 incident, float incidentIOR, float transmittedIOR, glm::vec3 reflectionDirection, glm::vec3 transmissionDirection);
 __host__ __device__ glm::vec3 calculateRandomDirectionInHemisphere(glm::vec3 normal, float xi1, float xi2);
+
+__host__ __device__ glm::vec3 getNextSegmentDirection(material mat, glm::vec3 incident, glm::vec3 normal, int iterations, int index, int bounce_count) {
+  if (mat.hasReflective) {
+    return getReflectedBounceDirection(incident, normal);
+  } else {
+    return getDiffuseBounceDirection(normal, iterations, index, bounce_count);
+  }
+}
+
+__host__ __device__ glm::vec3 getReflectedBounceDirection(glm::vec3 incident, glm::vec3 normal) {
+  return glm::normalize(incident - 2*glm::dot(incident, glm::normalize(normal))*glm::normalize(normal));
+}
+
+__host__ __device__ glm::vec3 getDiffuseBounceDirection(glm::vec3 normal, int iterations, int index, int bounce_count) {
+  thrust::default_random_engine rng(hash(index*iterations*bounce_count*clock()));
+  thrust::uniform_real_distribution<float> u01(0,1);
+  return calculateRandomDirectionInHemisphere(normal, u01(rng), u01(rng));
+}
 
 //TODO (OPTIONAL): IMPLEMENT THIS FUNCTION
 __host__ __device__ glm::vec3 calculateTransmission(glm::vec3 absorptionCoefficient, float distance) {

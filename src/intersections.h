@@ -74,6 +74,7 @@ __host__ __device__ float getIntersection(ray r, staticGeom* geoms, int numberOf
   int i;
   int intersect_i;
   rs->intersect.t = -1; // initialize intersection
+  rs->intersect.incident = r.direction;
   float tmp = -1;
   for (i=0; i<numberOfGeoms; i++) {
 	  staticGeom geom = geoms[i];
