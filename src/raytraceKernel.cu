@@ -143,11 +143,9 @@ __global__ void traceFirstSegment(glm::vec2 resolution, int iterations, cameraDa
     getIntersection(camera_ray, geoms, numberOfGeoms, materials, rs);
     // process intersection
     if (rs->intersect.t > 0) {
-        rs->color.x *= (float)(rs->intersect.mat.color.x);
-        rs->color.y *= (float)(rs->intersect.mat.color.y);
-        rs->color.z *= (float)(rs->intersect.mat.color.z);
-        if (rs->intersect.mat.emittance > 0) {
-          rs->emittance = rs->intersect.mat.emittance;
+        rs->color *= rs->intersect.color;
+        if (rs->intersect.emittance > 0) {
+          rs->emittance = rs->intersect.emittance;
           rs->active = false;
         }
     } else {
@@ -174,11 +172,9 @@ __global__ void traceNextSegment(glm::vec2 resolution, int iterations, int bounc
       getIntersection(bounce_ray, geoms, numberOfGeoms, materials, rs);
       // process intersection
       if (rs->intersect.t > 0) {
-          rs->color.x *= (float)(rs->intersect.mat.color.x);
-          rs->color.y *= (float)(rs->intersect.mat.color.y);
-          rs->color.z *= (float)(rs->intersect.mat.color.z);
-          if (rs->intersect.mat.emittance > 0) {
-            rs->emittance = rs->intersect.mat.emittance;
+          rs->color *= rs->intersect.color;
+          if (rs->intersect.emittance > 0) {
+            rs->emittance = rs->intersect.emittance;
             rs->active = false;
           }
       } else {

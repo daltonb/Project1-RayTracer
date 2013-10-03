@@ -20,6 +20,7 @@ __host__ __device__ glm::vec3 getSignOfRay(ray r);
 __host__ __device__ glm::vec3 getInverseDirectionOfRay(ray r);
 __host__ __device__ float getIntersection(ray r, staticGeom* geoms, int numberOfGeoms, material* materials, intersection& intersect);
 __host__ __device__ float boxIntersectionTest(staticGeom box, ray r, glm::vec3& intersectionPoint, glm::vec3& normal);
+__host__ __device__ void boxIntersectionColor(staticGeom box, ray r, glm::vec3& color);
 __host__ __device__ float sphereIntersectionTest(staticGeom sphere, ray r, glm::vec3& intersectionPoint, glm::vec3& normal);
 __host__ __device__ glm::vec3 getRandomPointOnCube(staticGeom cube, float randomSeed);
 
@@ -96,9 +97,108 @@ __host__ __device__ float getIntersection(ray r, staticGeom* geoms, int numberOf
     }
 	}
   if (rs->intersect.t > 0) {
-    rs->intersect.mat = materials[geoms[intersect_i].materialid];
+    staticGeom geom = geoms[intersect_i];
+    rs->intersect.mat = materials[geom.materialid];
+    rs->intersect.color = rs->intersect.mat.color;
+    if (geom.hasTexture) {
+      boxIntersectionColor(geom, r, rs->intersect.color);
+    }
+    rs->intersect.emittance = rs->intersect.mat.emittance;
   }
   return rs->intersect.t;
+}
+
+__host__ __device__ void boxIntersectionColor(staticGeom box, ray r, glm::vec3& color) {
+  // standard cube is axis-aligned, origin-centered, unit side length
+  float radius = .5;
+
+  // shift camera to "object space" instead of shifting object to "world space"
+  glm::vec3 ro = multiplyMV(box.inverseTransform, glm::vec4(r.origin, 1.0f));
+  glm::vec3 rd = glm::normalize(multiplyMV(box.inverseTransform, glm::vec4(r.direction, 0.0f)));
+
+  // initialize vars
+  ray rt; rt.origin = ro; rt.direction = rd; // transformed ray
+  float t; // parametric position on rt
+
+  glm::vec3 p; // intersection point
+  glm::vec3 norm; // intersection normal
+  bool intersectFlag = false;
+
+  float min_t; // closest intersection
+  glm::vec3 min_norm; // norm of closest intersection
+
+  // for the plane x =  0.5, t = ( 0.5 - ro.x)/(rd.x)
+  // for the plane x = -0.5, t = (-0.5 - ro.x)/(rd.x)
+  // therefore, when rd.x > 0, x = -0.5 will be closer, and vice-versa
+  // NOTE: this does not account for being inside or past the box
+  int min_face = 0;
+  int face = 0;
+  if (!epsilonCheck(rt.direction.x, 0.0f)) { // avoid divide by 0 error
+	// get appropriate YZ plane intersection
+    if (rt.direction.x < 0) {
+      t = ( radius - rt.origin.x)/rt.direction.x;
+	    face = 1;
+    } else {
+      t = (-radius - rt.origin.x)/rt.direction.x;
+	    face = 2;
+    }
+    p = getPointOnRay(rt, t);
+	// check for YZ face intersection
+    if ((t>0) && (p.y >= -radius) && (p.y <= radius) && (p.z >= -radius) && (p.z <= radius)) {
+      min_t = t;
+      min_face = face;
+	    intersectFlag = true;
+    }
+  }
+  if (!intersectFlag && !epsilonCheck(rt.direction.y, 0.0f)) {
+	// get appropriate XZ plane intersection
+    if (rt.direction.y < 0) {
+      t = ( radius - rt.origin.y)/rt.direction.y;
+      face = 3;
+    } else {
+      t = (-radius - rt.origin.y)/rt.direction.y;
+	    face = 4;
+    }
+    p = getPointOnRay(rt, t);
+	// check for XZ face intersection
+    if ((t>0) && (p.x >= -radius) && (p.x <= radius) && (p.z >= -radius) && (p.z <= radius)) {
+	    if (t < min_t || !intersectFlag) {
+		    min_t = t;
+		    min_face = face;
+        if (!intersectFlag) intersectFlag = true;
+	    }
+    }
+  }
+  if (!intersectFlag && !epsilonCheck(rt.direction.z, 0.0f)) {
+	// get appropriate XY plane intersection
+    if (rt.direction.z < 0) {
+      t = ( radius - rt.origin.z)/rt.direction.z;
+	    face = 5;
+    } else {
+      t = (-radius - rt.origin.z)/rt.direction.z;
+	    face = 6;
+    }
+    p = getPointOnRay(rt, t);
+	// check for XY face intersection
+    if ((t>0) && (p.x >= -radius) && (p.x <= radius) && (p.y >= -radius) && (p.y <= radius)) {
+	    if (t < min_t || !intersectFlag) {
+		    min_t = t;
+		    min_face = face;
+        if (!intersectFlag) intersectFlag = true;
+	    }
+    }
+  }
+
+  if (min_face == 1) {
+    // shift intersection back to "world space"
+    glm::vec3 intersectionPoint = getPointOnRay(rt, min_t);
+    float vert = intersectionPoint.x;
+    float horz = intersectionPoint.y;
+    int row = (float)(vert+0.5) * (box.textureRes.x-1);
+    int col = (float)(horz+0.5) * (box.textureRes.x-1);
+    color = box.texture[row*(int)box.textureRes.y+col];
+  }
+  return;
 }
 
 //DALTON: DONE

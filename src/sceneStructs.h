@@ -86,6 +86,8 @@ struct intersection {
   glm::vec3 incident;
   glm::vec3 normal;
   material mat;
+  glm::vec3 color;
+  float emittance;
 };
 
 struct raySegment {
