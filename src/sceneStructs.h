@@ -21,17 +21,24 @@ struct ray {
 struct geom {
 	enum GEOMTYPE type;
 	int materialid;
+  glm::vec3* texture;
+  bool hasTexture;
+  glm::vec2 textureRes;
 	int frames;
 	glm::vec3* translations;
 	glm::vec3* rotations;
 	glm::vec3* scales;
 	cudaMat4* transforms;
 	cudaMat4* inverseTransforms;
+
 };
 
 struct staticGeom {
 	enum GEOMTYPE type;
 	int materialid;
+  glm::vec3* texture;
+  bool hasTexture;
+  glm::vec2 textureRes;
 	glm::vec3 translation;
 	glm::vec3 rotation;
 	glm::vec3 scale;

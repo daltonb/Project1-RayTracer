@@ -234,7 +234,7 @@ SCALE       2.5 2.5 2.5
 
 OBJECT 7
 sphere
-material 13
+material 6
 frame 0
 TRANS       -2 5 -2
 ROTAT       0 180 0
@@ -243,7 +243,8 @@ SCALE       3 3 3
 
 OBJECT 8
 cube
-material 12
+material 13
+TEXTURE	    taking_picture.ppm
 frame 0
 TRANS       0 5 1
 ROTAT       0 45 45

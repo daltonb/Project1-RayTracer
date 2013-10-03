@@ -34,6 +34,7 @@ int main(int argc, char** argv){
     istringstream liness(argv[i]);
     getline(liness, header, '='); getline(liness, data, '=');
     if(strcmp(header.c_str(), "scene")==0){
+      cout << data << endl;
       renderScene = new scene(data);
       loadedScene = true;
     }else if(strcmp(header.c_str(), "frame")==0){

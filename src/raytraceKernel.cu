@@ -15,6 +15,8 @@
 #include "intersections.h"
 #include "interactions.h"
 #include <vector>
+#include <thrust/device_vector.h>
+#include <thrust/sequence.h>
 
 #if CUDA_VERSION >= 5000
     #include <helper_math.h>
@@ -199,7 +201,7 @@ __global__ void updateColors(glm::vec2 resolution, glm::vec3* colors, raySegment
 // Wrapper for the __global__ call that sets up the kernel calls and does a ton of memory management
 void cudaRaytraceCore(uchar4* PBOpos, camera* renderCam, int frame, int iterations, material* materials, int numberOfMaterials, geom* geoms, int numberOfGeoms){
   
-  int traceDepth = 4; //determines how many bounces the raytracer traces
+  int traceDepth = 2; //determines how many bounces the raytracer traces
 
   // set up crucial magic
   int tileSize = 8;
@@ -213,10 +215,19 @@ void cudaRaytraceCore(uchar4* PBOpos, camera* renderCam, int frame, int iteratio
   
   //package geometry and send to GPU
   staticGeom* geomList = new staticGeom[numberOfGeoms];
+  glm::vec3** texturePointers = new glm::vec3*[numberOfGeoms];
   for(int i=0; i<numberOfGeoms; i++){
     staticGeom newStaticGeom;
     newStaticGeom.type = geoms[i].type;
     newStaticGeom.materialid = geoms[i].materialid;
+    newStaticGeom.hasTexture = geoms[i].hasTexture;
+    if (newStaticGeom.hasTexture) {
+      newStaticGeom.textureRes = geoms[i].textureRes;
+      texturePointers[i] = NULL;
+      cudaMalloc((void**)&(texturePointers[i]), newStaticGeom.textureRes.x*newStaticGeom.textureRes.y*sizeof(glm::vec3));
+      cudaMemcpy(texturePointers[i], geoms[i].texture, sizeof(glm::vec3)*newStaticGeom.textureRes.x*newStaticGeom.textureRes.y, cudaMemcpyHostToDevice);
+      newStaticGeom.texture = texturePointers[i];
+    }
     newStaticGeom.translation = geoms[i].translations[frame];
     newStaticGeom.rotation = geoms[i].rotations[frame];
     newStaticGeom.scale = geoms[i].scales[frame];
@@ -259,17 +270,20 @@ void cudaRaytraceCore(uchar4* PBOpos, camera* renderCam, int frame, int iteratio
   cam.fov = renderCam->fov;
 
   //create ray segment pool
-  raySegment* cudaraypool = NULL;
-  cudaMalloc((void**)&cudaraypool, (int)renderCam->resolution.x*(int)renderCam->resolution.y*sizeof(raySegment)); 
+  raySegment* cudapool = NULL;
+  cudaMalloc((void**)&cudapool, (int)renderCam->resolution.x*(int)renderCam->resolution.y*sizeof(raySegment));
+
+  thrust::device_vector<int> cudapool_active((int)renderCam->resolution.x*(int)renderCam->resolution.y);
+  thrust::sequence(cudapool_active.begin(), cudapool_active.end());
 
   //kernel launches
-  traceFirstSegment<<<fullBlocksPerGrid, threadsPerBlock>>>(renderCam->resolution, iterations, cam, traceDepth, cudaimage, cudageoms, numberOfGeoms, cudamaterials, cudaraypool);
+  traceFirstSegment<<<fullBlocksPerGrid, threadsPerBlock>>>(renderCam->resolution, iterations, cam, traceDepth, cudaimage, cudageoms, numberOfGeoms, cudamaterials, cudapool);
   cudaDeviceSynchronize();
   for (int i=0; i<traceDepth-1; i++) {
-    traceNextSegment<<<fullBlocksPerGrid, threadsPerBlock>>>(renderCam->resolution, iterations, i+1, cam, traceDepth, cudaimage, cudageoms, numberOfGeoms, cudamaterials, cudaraypool);
+    traceNextSegment<<<fullBlocksPerGrid, threadsPerBlock>>>(renderCam->resolution, iterations, i+1, cam, traceDepth, cudaimage, cudageoms, numberOfGeoms, cudamaterials, cudapool);
     cudaDeviceSynchronize();
   }
-  updateColors<<<fullBlocksPerGrid, threadsPerBlock>>>(renderCam->resolution, cudaimage, cudaraypool);
+  updateColors<<<fullBlocksPerGrid, threadsPerBlock>>>(renderCam->resolution, cudaimage, cudapool);
   cudaDeviceSynchronize();
   
   sendImageToPBO<<<fullBlocksPerGrid, threadsPerBlock>>>(PBOpos, renderCam->resolution, cudaimage);
@@ -279,9 +293,15 @@ void cudaRaytraceCore(uchar4* PBOpos, camera* renderCam, int frame, int iteratio
 
   //free up stuff, or else we'll leak memory like a madman
   cudaFree( cudaimage );
+  for (int i=0; i<numberOfGeoms; i++) {
+    if (geomList[i].hasTexture) {
+      cudaFree(texturePointers[i]);
+    }
+  }
   cudaFree( cudageoms );
   cudaFree( cudamaterials );
-  cudaFree( cudaraypool );
+  cudaFree( cudapool );
+  delete texturePointers;
   delete geomList;
   delete materialList;
 
