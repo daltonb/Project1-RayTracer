@@ -878,4 +878,11 @@ C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v4.0\include\thrust/host_vect
 C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v4.0\include\thrust/detail/host_vector.inl
 C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v4.0\include\thrust/sequence.h
 C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v4.0\include\thrust/detail/sequence.inl
+C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v4.0\include\thrust/remove.h
+C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v4.0\include\thrust/detail/remove.inl
+C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v4.0\include\thrust/detail/dispatch/remove.h
+C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v4.0\include\thrust/detail/host/remove.h
+C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v4.0\include\thrust/detail/device/remove.h
+C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v4.0\include\thrust/detail/device/generic/remove.h
+c:\program files\nvidia gpu computing toolkit\cuda\v4.0\include\thrust\detail\device\generic\remove.inl
 C:/ProgramData/NVIDIA Corporation/NVIDIA GPU Computing SDK 4.0/C/common/inc\cutil_math.h

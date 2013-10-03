@@ -17,6 +17,7 @@
 #include <vector>
 #include <thrust/device_vector.h>
 #include <thrust/sequence.h>
+#include <thrust/remove.h>
 
 #if CUDA_VERSION >= 5000
     #include <helper_math.h>
@@ -81,27 +82,30 @@ __host__ __device__ ray raycastFromCameraKernel(glm::vec2 resolution, int iterat
 
 //Kernel that blacks out a given image buffer
 __global__ void clearImage(glm::vec2 resolution, glm::vec3* image){
-    int x = (blockIdx.x * blockDim.x) + threadIdx.x;
-    int y = (blockIdx.y * blockDim.y) + threadIdx.y;
-    int index = x + (y * resolution.x);
-    if(x<=resolution.x && y<=resolution.y){
-      image[index] = glm::vec3(0,0,0);
-    }
+  int index = blockIdx.x * blockDim.x * blockDim.y + threadIdx.x * blockDim.y + threadIdx.y;
+
+  int x = index % (int) resolution.x;
+  int y = index / (int) resolution.x;
+
+  if(x<=resolution.x && y<=resolution.y){
+    image[index] = glm::vec3(0,0,0);
+  }
 }
 
 //Kernel that writes the image to the OpenGL PBO directly.
-__global__ void sendImageToPBO(uchar4* PBOpos, glm::vec2 resolution, glm::vec3* image){
+__global__ void sendImageToPBO(uchar4* PBOpos, int iterations, glm::vec2 resolution, glm::vec3* image){
   
-  int x = (blockIdx.x * blockDim.x) + threadIdx.x;
-  int y = (blockIdx.y * blockDim.y) + threadIdx.y;
-  int index = x + (y * resolution.x);
+  int index = blockIdx.x * blockDim.x * blockDim.y + threadIdx.x * blockDim.y + threadIdx.y;
+
+  int x = index % (int) resolution.x;
+  int y = index / (int) resolution.x;
   
   if(x<=resolution.x && y<=resolution.y){
 
       glm::vec3 color;
-      color.x = image[index].x*255.0;
-      color.y = image[index].y*255.0;
-      color.z = image[index].z*255.0;
+      color.x = image[index].x*255.0/(float)iterations;
+      color.y = image[index].y*255.0/(float)iterations;
+      color.z = image[index].z*255.0/(float)iterations;
 
       if(color.x>255){
         color.x = 255;
@@ -126,15 +130,22 @@ __global__ void sendImageToPBO(uchar4* PBOpos, glm::vec2 resolution, glm::vec3* 
 //DALTON: IN PROGRESS
 //Launch camera rays and compute first intersection
 __global__ void traceFirstSegment(glm::vec2 resolution, int iterations, cameraData cam, int rayDepth, glm::vec3* colors,
-                            staticGeom* geoms, int numberOfGeoms, material* materials, raySegment* raypool){
+                            staticGeom* geoms, int numberOfGeoms, material* materials, raySegment* raypool, int* raypool_active, int raypool_size){
 
 
+  /*
   int x = (blockIdx.x * blockDim.x) + threadIdx.x;
   int y = (blockIdx.y * blockDim.y) + threadIdx.y;
   int index = x + (y * resolution.x);
+  */
 
-  if((x<=resolution.x && y<=resolution.y)){
-    raySegment* rs = &(raypool[index]);
+  int index = blockIdx.x * (blockDim.x*blockDim.y) + threadIdx.x * blockDim.y + threadIdx.y;
+
+  int x = index % (int) resolution.x;
+  int y = index / (int) resolution.x;
+
+  if(index < raypool_size){
+    raySegment* rs = &(raypool[raypool_active[index]]);
     // initialize ray state
     rs->active = true;
     rs->color = glm::vec3(1.0f, 1.0f, 1.0f);
@@ -156,15 +167,12 @@ __global__ void traceFirstSegment(glm::vec2 resolution, int iterations, cameraDa
 
 //Launch next ray and compute next intersection
 __global__ void traceNextSegment(glm::vec2 resolution, int iterations, int bounce_count, cameraData cam, int rayDepth, glm::vec3* colors,
-                            staticGeom* geoms, int numberOfGeoms, material* materials, raySegment* raypool){
+                            staticGeom* geoms, int numberOfGeoms, material* materials, raySegment* raypool, int* raypool_active, int raypool_size){
 
+  int index = blockIdx.x * blockDim.x * blockDim.y + threadIdx.x * blockDim.y + threadIdx.y;
 
-  int x = (blockIdx.x * blockDim.x) + threadIdx.x;
-  int y = (blockIdx.y * blockDim.y) + threadIdx.y;
-  int index = x + (y * resolution.x);
-
-  if((x<=resolution.x && y<=resolution.y)){
-    raySegment* rs = &(raypool[index]);
+  if(index < raypool_size){
+    raySegment* rs = &(raypool[raypool_active[index]]);
     if (rs->active) {
       ray bounce_ray;
       bounce_ray.origin = rs->intersect.point;
@@ -186,23 +194,30 @@ __global__ void traceNextSegment(glm::vec2 resolution, int iterations, int bounc
 
 //Calculate emittance * absorption
 __global__ void updateColors(glm::vec2 resolution, glm::vec3* colors, raySegment* raypool){
-  int x = (blockIdx.x * blockDim.x) + threadIdx.x;
-  int y = (blockIdx.y * blockDim.y) + threadIdx.y;
-  int index = x + (y * resolution.x);
+  int index = blockIdx.x * blockDim.x * blockDim.y + threadIdx.x * blockDim.y + threadIdx.y;
 
   colors[index] += (raypool[index].color * raypool[index].emittance);
 }
+
+struct is_dead {
+  is_dead(raySegment* rs) : rs(rs) {}
+  __host__ __device__ bool operator() (int index) {
+    return !(rs[index].active);
+  }
+private:
+  raySegment* rs;
+};
 
 // DALTON: DONE
 // Wrapper for the __global__ call that sets up the kernel calls and does a ton of memory management
 void cudaRaytraceCore(uchar4* PBOpos, camera* renderCam, int frame, int iterations, material* materials, int numberOfMaterials, geom* geoms, int numberOfGeoms){
   
-  int traceDepth = 4; //determines how many bounces the raytracer traces
+  int traceDepth = 3; //determines how many bounces the raytracer traces
 
   // set up crucial magic
   int tileSize = 8;
   dim3 threadsPerBlock(tileSize, tileSize);
-  dim3 fullBlocksPerGrid((int)ceil(float(renderCam->resolution.x)/float(tileSize)), (int)ceil(float(renderCam->resolution.y)/float(tileSize)));
+  dim3 numBlocks((int)ceil(float(renderCam->resolution.x)*float(renderCam->resolution.y)/float(tileSize*tileSize)));
   
   //send image to GPU
   glm::vec3* cudaimage = NULL;
@@ -271,18 +286,23 @@ void cudaRaytraceCore(uchar4* PBOpos, camera* renderCam, int frame, int iteratio
 
   thrust::device_vector<int> cudapool_active((int)renderCam->resolution.x*(int)renderCam->resolution.y);
   thrust::sequence(cudapool_active.begin(), cudapool_active.end());
+  int * cudapool_active_ptr = thrust::raw_pointer_cast(cudapool_active.data());
 
   //kernel launches
-  traceFirstSegment<<<fullBlocksPerGrid, threadsPerBlock>>>(renderCam->resolution, iterations, cam, traceDepth, cudaimage, cudageoms, numberOfGeoms, cudamaterials, cudapool);
+  traceFirstSegment<<<numBlocks, threadsPerBlock>>>(renderCam->resolution, iterations, cam, traceDepth, cudaimage, cudageoms, numberOfGeoms, cudamaterials, cudapool, cudapool_active_ptr, cudapool_active.size());
   cudaDeviceSynchronize();
   for (int i=0; i<traceDepth-1; i++) {
-    traceNextSegment<<<fullBlocksPerGrid, threadsPerBlock>>>(renderCam->resolution, iterations, i+1, cam, traceDepth, cudaimage, cudageoms, numberOfGeoms, cudamaterials, cudapool);
+    cudapool_active.erase(thrust::remove_if(cudapool_active.begin(), cudapool_active.end(), is_dead(cudapool)), cudapool_active.end());
+    cudapool_active_ptr = thrust::raw_pointer_cast(cudapool_active.data());
+    dim3 reducedNumBlocks((int)ceil(float(cudapool_active.size())/float(tileSize*tileSize)));
+    //printf("Bounce %d: %d blocks\n", i+1, reducedNumBlocks); // verify stream compaction is working properly
+    traceNextSegment<<<reducedNumBlocks, threadsPerBlock>>>(renderCam->resolution, iterations, i+1, cam, traceDepth, cudaimage, cudageoms, numberOfGeoms, cudamaterials, cudapool, cudapool_active_ptr, cudapool_active.size());
     cudaDeviceSynchronize();
   }
-  updateColors<<<fullBlocksPerGrid, threadsPerBlock>>>(renderCam->resolution, cudaimage, cudapool);
+  updateColors<<<numBlocks, threadsPerBlock>>>(renderCam->resolution, cudaimage, cudapool);
   cudaDeviceSynchronize();
   
-  sendImageToPBO<<<fullBlocksPerGrid, threadsPerBlock>>>(PBOpos, renderCam->resolution, cudaimage);
+  sendImageToPBO<<<numBlocks, threadsPerBlock>>>(PBOpos, iterations, renderCam->resolution, cudaimage);
 
   //retrieve image from GPU
   cudaMemcpy( renderCam->image, cudaimage, (int)renderCam->resolution.x*(int)renderCam->resolution.y*sizeof(glm::vec3), cudaMemcpyDeviceToHost);
