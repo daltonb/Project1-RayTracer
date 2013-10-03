@@ -168,101 +168,109 @@ EMITTANCE   0
 
 CAMERA
 RES         800 800
-FOVY        30
+FOVY        45
 ITERATIONS  40
 FILE        test.bmp
 frame 0
-EYE         0 4.5 20
+EYE         0 0 7.4
 VIEW        0 0 -1
 UP          0 1 0
 
-OBJECT 0
+OBJECT 0				//bottom wall
 cube
 material 9
 frame 0
-TRANS       0 0 0
-ROTAT       0 0 90
-SCALE       .01 10 10 
+TRANS       0 -5 0
+ROTAT       0 0 0
+SCALE       10 .01 15
 
-OBJECT 1
+OBJECT 1				//back wall
 cube
 material 10
-TEXTURE	    taking_picture.ppm
 frame 0
-TRANS       0 5 -5
-ROTAT       0 270 0
-SCALE       .01 10 10
+TRANS       0 0 -7.5
+ROTAT       0 0 0
+SCALE       10 10 .1
 
-OBJECT 2
+OBJECT 2				//top wall
 cube
 material 11
 frame 0
-TRANS       0 10 0
-ROTAT       0 0 90
-SCALE       .01 10 10
+TRANS       0 5 0
+ROTAT       0 0 0
+SCALE       10 .01 15
 
-OBJECT 3
+OBJECT 3				//left wall
 cube
 material 1
 frame 0
-TRANS       -5 5 0
+TRANS       -5 0 0
 ROTAT       0 0 0
-SCALE       .01 10 10
+SCALE       .01 10 15
 
-OBJECT 4
+OBJECT 4				//right wall
 cube
 material 2
 frame 0
-TRANS       5 5 0
+TRANS       5 0 0
 ROTAT       0 0 0
-SCALE       .01 10 10
+SCALE       .01 10 15
 
-OBJECT 5
+OBJECT 5				//center sphere
 sphere
 material 4
 frame 0
-TRANS       0 2 0
-ROTAT       0 180 0
+TRANS       0 -2.5 -4
+ROTAT       0 0 0
 SCALE       3 3 3
 
-OBJECT 6
+OBJECT 6				//right sphere
 sphere
-material 3
+material 13
 frame 0
-TRANS       2 5 2
-ROTAT       0 180 0
+TRANS       1.75 0.75 -1
+ROTAT       0 0 0
 SCALE       2.5 2.5 2.5
 
-OBJECT 7
+OBJECT 7				//left sphere
 sphere
 material 6
 frame 0
-TRANS       -2 5 -2
-ROTAT       0 180 0
+TRANS       -2.25 0.5 -5
+ROTAT       0 0 0
 SCALE       3 3 3
 
 
-OBJECT 8
+OBJECT 8				//cube
 cube
-material 6
+material 12
 frame 0
-TRANS       0 5 1
-ROTAT       0 90 0
+TRANS       -0.2 0.5 -3.5
+ROTAT       0 45 45
 SCALE       1 1 1
 
 
-OBJECT 9
+OBJECT 9				//light shield
 cube
 material 0 
 frame 0
-TRANS       0 9.710 0
-ROTAT       0 0 90
-SCALE       .01 3 3
+TRANS       0 4.710 -3.65
+ROTAT       0 0 0
+SCALE       3 .01 3
 
-OBJECT 10
+OBJECT 10				//light
 cube
 material 8 
 frame 0
-TRANS       0 9.705 0
-ROTAT       0 0 90
-SCALE       .01 3 3
+TRANS       0 4.705 -3.65
+ROTAT       0 0 0
+SCALE       3 .01 3
+
+OBJECT 11				//front panel
+cube
+material 1
+TEXTURE	    taking_picture.ppm
+frame 0
+TRANS       0 0 7.5
+ROTAT       0 180 0
+SCALE       10 10 .01

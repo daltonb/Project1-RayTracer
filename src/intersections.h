@@ -189,14 +189,14 @@ __host__ __device__ void boxIntersectionColor(staticGeom box, ray r, glm::vec3& 
     }
   }
 
-  if (min_face == 1) {
+  if (min_face == 5) {
     // shift intersection back to "world space"
     glm::vec3 intersectionPoint = getPointOnRay(rt, min_t);
-    float vert = intersectionPoint.x;
-    float horz = intersectionPoint.y;
-    int row = (float)(vert+0.5) * (box.textureRes.x-1);
-    int col = (float)(horz+0.5) * (box.textureRes.x-1);
-    color = box.texture[row*(int)box.textureRes.y+col];
+    float vert = intersectionPoint.y;
+    float horz = intersectionPoint.x;
+    int row = (float)(0.5-vert) * (box.textureRes.y-1);
+    int col = (float)(horz-0.5) * (box.textureRes.x-1);
+    color = box.texture[row*(int)box.textureRes.x+col];
   }
   return;
 }

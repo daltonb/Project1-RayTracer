@@ -197,7 +197,7 @@ __global__ void updateColors(glm::vec2 resolution, glm::vec3* colors, raySegment
 // Wrapper for the __global__ call that sets up the kernel calls and does a ton of memory management
 void cudaRaytraceCore(uchar4* PBOpos, camera* renderCam, int frame, int iterations, material* materials, int numberOfMaterials, geom* geoms, int numberOfGeoms){
   
-  int traceDepth = 2; //determines how many bounces the raytracer traces
+  int traceDepth = 4; //determines how many bounces the raytracer traces
 
   // set up crucial magic
   int tileSize = 8;
