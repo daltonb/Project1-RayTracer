@@ -178,8 +178,7 @@ UP          0 1 0
 
 OBJECT 0				//bottom wall
 cube
-material 9
-TEXTURE	    wrinkled_bottom_face.ppm
+material 0
 frame 0
 TRANS       0 -5 0
 ROTAT       -90 0 0
@@ -187,8 +186,7 @@ SCALE       10 15 .1
 
 OBJECT 1				//back wall
 cube
-material 10
-TEXTURE	    wrinkled_back_face.ppm
+material 0
 frame 0
 TRANS       0 0 -7.5
 ROTAT       0 0 0
@@ -196,8 +194,7 @@ SCALE       10 10 .1
 
 OBJECT 2				//top wall
 cube
-material 11
-TEXTURE	    wrinkled_top_face.ppm
+material 0
 frame 0
 TRANS       0 5 0
 ROTAT       90 0 0
@@ -206,7 +203,6 @@ SCALE       10 15 .1
 OBJECT 3				//left wall
 cube
 material 1
-TEXTURE	    wrinkled_left_face.ppm
 frame 0
 TRANS       -5 0 0
 ROTAT       0 90 0
@@ -215,7 +211,6 @@ SCALE       15 10 .1
 OBJECT 4				//right wall
 cube
 material 2
-TEXTURE	    wrinkled_right_face.ppm
 frame 0
 TRANS       5 0 0
 ROTAT       0 -90 0
@@ -271,11 +266,11 @@ TRANS       0 4.705 -3.65
 ROTAT       0 0 0
 SCALE       3 .01 3
 
-//OBJECT 11				//front panel
-//cube
-//material 1
-//TEXTURE	    taking_picture.ppm
-//frame 0
-//TRANS       0 0 7.5
-//ROTAT       0 180 0
-//SCALE       10 10 .01
+OBJECT 11				//front panel
+cube
+material 1
+TEXTURE	    taking_picture.ppm
+frame 0
+TRANS       0 0 7.5
+ROTAT       0 180 0
+SCALE       10 10 .01

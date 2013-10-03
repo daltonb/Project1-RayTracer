@@ -103,9 +103,7 @@ __global__ void sendImageToPBO(uchar4* PBOpos, int iterations, glm::vec2 resolut
   if(x<=resolution.x && y<=resolution.y){
 
       glm::vec3 color;
-      color.x = image[index].x*255.0/(float)iterations;
-      color.y = image[index].y*255.0/(float)iterations;
-      color.z = image[index].z*255.0/(float)iterations;
+      color = image[index]/(float)iterations*255.0f;
 
       if(color.x>255){
         color.x = 255;
